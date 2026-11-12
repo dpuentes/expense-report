@@ -6,12 +6,13 @@
 set -u
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 cp -r report tests data "$tmp"/ 2>/dev/null
-git diff -U0 "$FACTORY_BASE" -- report | python3 - "$tmp" <<'PY'
+git diff -U0 "$FACTORY_BASE" -- report >"$tmp/cambio.diff"
+python3 - "$tmp" <<'PY'
 import re, subprocess, sys, pathlib
 tmp = pathlib.Path(sys.argv[1])
 SWAPS = [(" + ", " - "), (" == ", " != "), (" < ", " >= "), (" > ", " <= "), ("sorted(", "list("), (" not ", " "), ("+= ", "-= ")]
 added, f, n = [], None, 0
-for line in sys.stdin:
+for line in (tmp / "cambio.diff").read_text(encoding="utf-8").splitlines():
     if line.startswith("+++ b/"): f = line[6:].strip()
     elif m := re.match(r"@@ -\S+ \+(\d+)", line): n = int(m.group(1))
     elif line.startswith("+") and not line.startswith("+++"):
