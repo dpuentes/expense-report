@@ -17,6 +17,22 @@ another agent will build. You do not write code.
    - **Tests to write first**: the behaviors each test checks.
    - **Out of scope**: what this change does not do.
 
+   - **Size budget**: estimated lines added plus removed per file, and the total.
+
+Plan a vertical slice, not the whole ticket, when the ticket does not fit:
+- Before you write the plan, read every script in gates/ and note each limit (line count, allowed
+  imports, forbidden paths). Those limits are hard: a run that breaks one ships nothing.
+- Your budget is 60% of the line limit in gates/, tests included. If the full ticket does not fit
+  the budget, or needs anything a gate forbids, cut the scope: keep the smallest slice that works
+  end to end for a real user and passes every gate.
+- Prefer the slices the existing code already supports and the ones the standard library covers.
+  Drop the parts that need a new dependency or a large parser first.
+- Say it plainly in the plan: under **Assumptions** write "Scope cut: delivered X, left out Y,
+  because <the gate and its limit>". Under **Out of scope** list each part left out as a
+  follow-up ticket title, so a human can file it.
+- A cut scope is a correct delivery of this plan. Tell the builder to make the code say clearly
+  what is not supported yet (an error message that names it), with a test for that message.
+
 `.factory/plan.md` is the only file you may write.
 
 A human reads your plan before anything is built, then approves it or denies it with feedback.
