@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from report.expenses import Expense, ReportError, parse_row, read_expenses, summary
+from report.expenses import Expense, ReportError, parse_row, read_expenses, summary, totals_by_currency
 
 ROW = {"date": "2026-10-03", "description": "Taxi", "amount": "12.50", "currency": "usd"}
 
@@ -64,6 +64,39 @@ class Cli(unittest.TestCase):
 
     def test_bad_file_exits_1(self) -> None:
         self.assertEqual(self.run_cli("missing.csv").returncode, 1)
+
+    def test_prints_totals_per_currency(self) -> None:
+        out = self.run_cli("data/sample.csv")
+        lines = out.stdout.splitlines()
+        self.assertIn("expenses from", lines[0])
+        self.assertEqual(lines[1:], ["EUR 141.90", "GBP 210.00", "USD 485.00"])
+
+    def test_totals_have_two_decimals(self) -> None:
+        path = write_csv("date,description,amount,currency\n2026-10-05,Lunch,9,EUR\n")
+        self.assertEqual(self.run_cli(str(path)).stdout.splitlines()[1:], ["EUR 9.00"])
+
+    def test_currencies_are_not_mixed(self) -> None:
+        path = write_csv(
+            "date,description,amount,currency\n2026-10-05,A,5,EUR\n2026-10-06,B,7.5,USD\n2026-10-07,C,1,EUR\n"
+        )
+        self.assertEqual(self.run_cli(str(path)).stdout.splitlines()[1:], ["EUR 6.00", "USD 7.50"])
+
+
+class Totals(unittest.TestCase):
+    def make(self, amount: str, currency: str) -> Expense:
+        return parse_row({**ROW, "amount": amount, "currency": currency}, 2)
+
+    def test_sums_per_currency(self) -> None:
+        result = totals_by_currency([self.make("4.20", "EUR"), self.make("6.80", "EUR"), self.make("3", "USD")])
+        self.assertEqual(result["EUR"], Decimal("11.00"))
+        self.assertEqual(result["USD"], Decimal("3"))
+
+    def test_keys_are_sorted(self) -> None:
+        result = totals_by_currency([self.make("1", "USD"), self.make("1", "EUR"), self.make("1", "GBP")])
+        self.assertEqual(list(result), ["EUR", "GBP", "USD"])
+
+    def test_empty(self) -> None:
+        self.assertEqual(totals_by_currency([]), {})
 
 
 if __name__ == "__main__":
